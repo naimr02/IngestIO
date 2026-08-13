@@ -382,6 +382,7 @@ Contributions are welcome. Before opening a PR: `npm run typecheck` and
 `npm test`. Keep changes focused, document new environment variables in
 `.env.example`, and add tests for anything touching signatures or queue payloads.
 
-> **License:** this project is open source, but no license file is included yet —
-> choose one (e.g. MIT) before publishing to GitHub. See
-> [choosealicense.com](https://choosealicense.com) for guidance.
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file
+for details.
