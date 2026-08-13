@@ -125,7 +125,7 @@ production topology for $0/month.
   `error`, `attemptsMade`, and `failedAt` for replay tooling.
 - **Signed webhooks** — HMAC-SHA256 signatures in `X-IngestIO-Signature`, with a
   constant-time verifier for the receiving side.
-- **Idempotent enqueues** — BullMQ `jobId = ingestio:<row-id>` makes re-submissions
+- **Idempotent enqueues** — BullMQ `jobId = ingestio-<row-id>` makes re-submissions
   no-ops.
 - **Runtime payload validation** — queue payloads are validated before enqueue
   and before processing; malformed payloads fail fast.
@@ -213,7 +213,8 @@ final one (`attemptsMade >= opts.attempts` or an unrecoverable error):
 
 ### Idempotency
 
-The BullMQ `jobId` is derived from the `jobs` row PK (`ingestio:<id>`), so
+The BullMQ `jobId` is derived from the `jobs` row PK (`ingestio-<id>`; hyphen, since
+BullMQ forbids colons in custom jobIds), so
 re-enqueuing the same document is a no-op.
 
 ## Webhooks

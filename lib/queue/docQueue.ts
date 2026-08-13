@@ -153,10 +153,13 @@ export function getWebhookQueue(): Queue<WebhookDeliveryData> {
  *
  * The payload is validated before the queue is even touched, so a malformed
  * payload fails fast instead of reaching a worker.
+ *
+ * NOTE: the prefix uses a hyphen, not a colon — colons are reserved Redis key
+ * delimiters and BullMQ rejects custom jobIds containing them (HTTP 503).
  */
 export async function enqueueExtraction(data: ExtractJobData): Promise<void> {
   const valid = validateExtractJobData(data);
   await getDocQueue().add(JOB_NAMES.extract, valid, {
-    jobId: `ingestio:${valid.jobId}`,
+    jobId: `ingestio-${valid.jobId}`,
   });
 }

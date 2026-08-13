@@ -121,7 +121,7 @@ describe.skipIf(!process.env.TEST_REDIS_URL)('live BullMQ round-trip', () => {
     });
 
     try {
-      const id = `ingestio:${validExtract.jobId}`;
+      const id = `ingestio-${validExtract.jobId}`; // hyphen, not colon — BullMQ forbids colons in custom jobIds
       await queue.add(JOB_NAMES.extract, validExtract, { jobId: id });
 
       const job = await queue.getJob(id);
