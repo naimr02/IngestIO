@@ -57,7 +57,7 @@ flowchart LR
     end
 
     subgraph AI["Google AI Studio"]
-        Gemini["gemini-1.5-flash"]
+        Gemini["gemini-3.6-flash"]
     end
 
     subgraph Supabase["Supabase"]
@@ -106,7 +106,7 @@ instead of burning retries. No job is ever silently lost.
 
 **Zero-cost hosting.** Every dependency has a generous free tier: Supabase
 (Postgres, Auth, Storage — 500 MB database, 1 GB storage), Upstash (256 MB Redis,
-10k commands/day), and Gemini (free daily quota, including `gemini-1.5-flash`).
+10k commands/day), and Gemini (free daily quota, including `gemini-3.6-flash`).
 Deploy the Next.js app on Vercel's Hobby plan and run the worker as a single
 container on any free-tier host (Railway, Render, Fly.io) — a fully functional
 production topology for $0/month.
@@ -117,7 +117,7 @@ production topology for $0/month.
   queries to the verified `user.id`.
 - **202-async upload API** — validates PDF magic bytes, caps file size (20 MB),
   rolls back storage on failure, never leaves a job stuck in `pending`.
-- **Structured extraction** — `gemini-1.5-flash` with `responseMimeType: json`
+- **Structured extraction** — `gemini-3.6-flash` (configurable via `GEMINI_MODEL`) with `responseMimeType: json`
   and a strict-JSON prompt; tolerant of markdown-fenced model output.
 - **429-aware exponential backoff** — custom BullMQ `backoffStrategy` inspects the
   error class (3 attempts max).
@@ -175,7 +175,7 @@ ceiling), rolls back the stored object if the job insert fails, and marks the ro
 ## Worker Pipeline
 
 Per `doc.extract` job: mark `processing` → fetch a fresh 60s signed URL →
-download the PDF → `progress 25%` → send to `gemini-1.5-flash` (structured JSON,
+download the PDF → `progress 25%` → send to `gemini-3.6-flash` (structured JSON,
 temperature 0) → `progress 50%` → persist `result_json` + `100%` → enqueue webhook
 deliveries. Progress is written to **both** Redis (`job.updateProgress`) and
 Postgres, so `GET /api/jobs/:id` reflects it in real time. Failures re-throw so
@@ -284,8 +284,11 @@ All three services have free tiers — no credit card required.
 1. Go to [aistudio.google.com](https://aistudio.google.com) → sign in → **Get
    API key**.
 2. Choose a Google Cloud project (or create one) → **Create API key**.
-3. Copy it to `GEMINI_API_KEY`. The free tier includes `gemini-1.5-flash` with a
+3. Copy it to `GEMINI_API_KEY`. The free tier includes `gemini-3.6-flash` with a
    generous daily request quota — enough for hundreds of extractions per day.
+4. Optional: set `GEMINI_MODEL` to pin a different model (e.g.
+   `models/gemini-3.6-flash` is also accepted — a leading `models/` prefix is
+   stripped automatically). Defaults to `gemini-3.6-flash`.
 
 ## Getting Started
 

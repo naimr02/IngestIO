@@ -6,7 +6,16 @@
  * reference the file by URI instead.
  */
 
-export const GEMINI_MODEL = 'gemini-1.5-flash';
+/**
+ * Model used for structured extraction. Override with `GEMINI_MODEL`; defaults
+ * to `gemini-3.6-flash`. A leading `models/` prefix is tolerated (env values
+ * like `models/gemini-3.6-flash` are normalized before the REST call).
+ */
+export const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+
+/** Model name with any `models/` prefix stripped — the REST path wants the bare name. */
+const GEMINI_MODEL_NAME = GEMINI_MODEL.replace(/^models\//, '');
+
 export const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 
 /** Gemini inline `inline_data` ceiling (free tier). */
@@ -56,9 +65,10 @@ and monetary values as-is. If the document has no extractable content, return an
 object with an empty body instead of failing.`;
 
 /**
- * Send the PDF to Gemini (`gemini-1.5-flash`) and return the parsed structured
- * JSON object. Throws `GeminiRateLimitError` on HTTP 429 and `GeminiApiError`
- * for other API failures, so the worker's retry/backoff policy can react.
+ * Send the PDF to Gemini (model from `GEMINI_MODEL`, default `gemini-3.6-flash`)
+ * and return the parsed structured JSON object. Throws `GeminiRateLimitError`
+ * on HTTP 429 and `GeminiApiError` for other API failures, so the worker's
+ * retry/backoff policy can react.
  */
 export async function extractStructuredJsonFromPdf(
   input: GeminiExtractInput,
@@ -76,7 +86,7 @@ export async function extractStructuredJsonFromPdf(
   }
 
   const res = await fetch(
-    `${GEMINI_BASE_URL}/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+    `${GEMINI_BASE_URL}/models/${GEMINI_MODEL_NAME}:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
