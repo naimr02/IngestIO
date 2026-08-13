@@ -2,6 +2,7 @@
   "name": "@ingestio/shared",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Shared domain and queue types for IngestIO.",
   "exports": {
     ".": "./src/index.ts"

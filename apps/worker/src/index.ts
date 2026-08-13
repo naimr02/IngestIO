@@ -13,6 +13,8 @@
 
 import 'dotenv/config';
 
+import http from 'node:http';
+
 import { Worker } from 'bullmq';
 import {
   JOB_NAMES,
@@ -30,6 +32,23 @@ import type { DeadLetterEntry, ExtractJobData, WebhookDeliveryData } from '@inge
 const supabase = getSupabaseAdmin();
 
 const CONCURRENCY = Number(process.env.WORKER_CONCURRENCY ?? 4);
+
+/**
+ * Lightweight HTTP server so Render's health checks find an open port.
+ * Render expects the service to bind to PORT (default 10000) and will
+ * otherwise report "No open ports detected".
+ */
+function startHealthServer(): http.Server {
+  const port = Number(process.env.PORT ?? 10000);
+  const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('IngestIO Worker Running\n');
+  });
+  server.listen(port, () => {
+    console.log(`Health check server listening on port ${port}`);
+  });
+  return server;
+}
 
 interface FailedJobLike {
   name: string;
@@ -85,6 +104,8 @@ async function handleFailed(job: FailedJobLike | undefined, error: Error): Promi
 }
 
 async function main(): Promise<void> {
+  const healthServer = startHealthServer();
+
   const docWorker = createDocWorker(supabase, { concurrency: CONCURRENCY });
 
   const webhookWorker = new Worker<WebhookDeliveryData>(
@@ -122,6 +143,7 @@ async function main(): Promise<void> {
 
   const shutdown = async (): Promise<void> => {
     console.log('Shutting down…');
+    await new Promise<void>((resolve) => healthServer.close(() => resolve()));
     await Promise.all([docWorker.close(), webhookWorker.close()]);
     process.exit(0);
   };

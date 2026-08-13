@@ -10,6 +10,7 @@
   "scripts": {
     "dev:web": "npm run dev --workspace @ingestio/web",
     "dev:worker": "npm run dev --workspace @ingestio/worker",
+    "start:worker": "npm run start --workspace @ingestio/worker",
     "build": "npm run build --workspace @ingestio/web && npm run build --workspace @ingestio/worker",
     "typecheck": "tsc --noEmit && npm run typecheck --workspaces --if-present",
     "test": "vitest run",
