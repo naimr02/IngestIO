@@ -1,0 +1,31 @@
+# dependencies
+node_modules/
+
+# builds
+dist/
+.next/
+out/
+*.tsbuildinfo
+
+# env (keep the example)
+.env
+.env.local
+.env.*
+!.env.example
+
+# tests
+coverage/
+.vitest/
+
+# supabase local dev
+supabase/.temp/
+supabase/.branches/
+
+# misc
+.DS_Store
+*.log
+
+# local application data (desktop database files)
+desktop-v2.db
+*.db-shm
+*.db-wal
