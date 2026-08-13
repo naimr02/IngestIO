@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { getRequestUser } from '@ingestio/lib/api/auth';
+import { enforceUploadRateLimit } from '@ingestio/lib/rate-limit';
 import { enqueueExtraction } from '@ingestio/lib/queue/docQueue';
 import { ensureStorageBucket, getSupabaseAdmin } from '@ingestio/lib/supabase/admin';
 import type { UploadJobResponse } from '@ingestio/shared';
@@ -27,6 +28,10 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (!user) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
+
+  // Cap submissions per user/IP before touching storage or the queue.
+  const rateLimited = await enforceUploadRateLimit(request, user.id);
+  if (rateLimited) return rateLimited;
 
   let file: File;
   try {
@@ -75,6 +80,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: 'storage unavailable' }, { status: 500 });
   }
 
+  // Storage keys are random UUIDs under the user's folder — never derived
+  // from the client-provided filename (prevents path traversal/overwrites).
   const storagePath = `${user.id}/${randomUUID()}.pdf`;
   const { error: uploadError } = await supabase.storage
     .from(STORAGE_BUCKET)

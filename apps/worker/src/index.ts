@@ -24,6 +24,7 @@ import {
   getDeadLetterQueue,
 } from '@ingestio/lib/queue/docQueue';
 import { getSupabaseAdmin } from '@ingestio/lib/supabase/admin';
+import { sanitizeMessage } from '@ingestio/lib/sanitize';
 import { dispatchWebhook } from '@ingestio/lib/webhooks/dispatcher';
 import { createDocWorker } from '@ingestio/workers/docWorker';
 import { PayloadValidationError, UnrecoverableJobError } from '@ingestio/shared';
@@ -32,6 +33,12 @@ import type { DeadLetterEntry, ExtractJobData, WebhookDeliveryData } from '@inge
 const supabase = getSupabaseAdmin();
 
 const CONCURRENCY = Number(process.env.WORKER_CONCURRENCY ?? 4);
+
+// All stdout goes through the sanitizer — error messages can embed URLs,
+// Redis connection strings, or tokens that must never reach log drains.
+const log = (msg: unknown) => console.log(sanitizeMessage(msg));
+const warn = (msg: unknown) => console.warn(sanitizeMessage(msg));
+const logError = (msg: unknown) => console.error(sanitizeMessage(msg));
 
 /**
  * Lightweight HTTP server so Render's health checks find an open port.
@@ -45,7 +52,7 @@ function startHealthServer(): http.Server {
     res.end('IngestIO Worker Running\n');
   });
   server.listen(port, () => {
-    console.log(`Health check server listening on port ${port}`);
+    log(`Health check server listening on port ${port}`);
   });
   return server;
 }
@@ -83,7 +90,7 @@ async function handleFailed(job: FailedJobLike | undefined, error: Error): Promi
   }
 
   if (!isFinalAttempt) {
-    console.warn(
+    warn(
       `[${job.name}] attempt ${job.attemptsMade}/${maxAttempts} failed, retrying with backoff: ${error.message}`,
     );
     return;
@@ -98,9 +105,7 @@ async function handleFailed(job: FailedJobLike | undefined, error: Error): Promi
     failedAt: new Date().toISOString(),
   };
   await getDeadLetterQueue().add('dlq', entry);
-  console.error(
-    `[${job.name}] exhausted ${maxAttempts} attempts → moved to DLQ: ${error.message}`,
-  );
+  logError(`[${job.name}] exhausted ${maxAttempts} attempts → moved to DLQ: ${error.message}`);
 }
 
 async function main(): Promise<void> {
@@ -131,18 +136,18 @@ async function main(): Promise<void> {
   docWorker.on('failed', handleFailed);
   webhookWorker.on('failed', handleFailed);
 
-  docWorker.on('completed', (job) => console.log(`[${job.name}] completed (${job.id})`));
-  webhookWorker.on('completed', (job) => console.log(`[${job.name}] completed (${job.id})`));
+  docWorker.on('completed', (job) => log(`[${job.name}] completed (${job.id})`));
+  webhookWorker.on('completed', (job) => log(`[${job.name}] completed (${job.id})`));
 
-  docWorker.on('error', (err) => console.error('doc worker error:', err.message));
-  webhookWorker.on('error', (err) => console.error('webhook worker error:', err.message));
+  docWorker.on('error', (err) => logError(`doc worker error: ${err.message}`));
+  webhookWorker.on('error', (err) => logError(`webhook worker error: ${err.message}`));
 
-  console.log(
+  log(
     `IngestIO worker listening on: ${QUEUES.docs}, ${QUEUES.webhooks} (concurrency ${CONCURRENCY})`,
   );
 
   const shutdown = async (): Promise<void> => {
-    console.log('Shutting down…');
+    log('Shutting down…');
     await new Promise<void>((resolve) => healthServer.close(() => resolve()));
     await Promise.all([docWorker.close(), webhookWorker.close()]);
     process.exit(0);
@@ -152,6 +157,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error('Fatal worker error:', err);
+  logError(`Fatal worker error: ${sanitizeMessage(err)}`);
   process.exit(1);
 });

@@ -14,6 +14,7 @@
 import { Worker, type Job } from 'bullmq';
 import { QUEUES, backoffStrategy, createRedisConnection } from '@ingestio/lib/queue/docQueue';
 import { getSupabaseAdmin } from '@ingestio/lib/supabase/admin';
+import { sanitizeMessage } from '@ingestio/lib/sanitize';
 import { extractStructuredJsonFromPdf } from '@ingestio/lib/gemini/client';
 import { enqueueWebhookDeliveries } from '@ingestio/lib/webhooks/dispatcher';
 import { UnrecoverableJobError, validateExtractJobData } from '@ingestio/shared';
@@ -22,6 +23,10 @@ import type { ExtractJobData } from '@ingestio/shared';
 
 /** Gemini inline_data ceiling (free tier). */
 export const MAX_PDF_BYTES = 20 * 1024 * 1024;
+
+// Route stdout through the sanitizer so tokens/keys never reach log drains.
+const log = (msg: unknown) => console.log(sanitizeMessage(msg));
+const warn = (msg: unknown) => console.warn(sanitizeMessage(msg));
 
 export interface DocWorkerOptions {
   concurrency?: number;
@@ -78,11 +83,11 @@ export async function processDocJob(
   if (jobRow) {
     const enqueued = await enqueueWebhookDeliveries(supabase, jobRow, 'job.completed');
     if (enqueued > 0) {
-      console.log(`[doc.extract] enqueued ${enqueued} webhook delivery(ies) for job ${jobId}`);
+      log(`[doc.extract] enqueued ${enqueued} webhook delivery(ies) for job ${jobId}`);
     }
   }
 
-  console.log(`[doc.extract] job ${jobId} (user ${userId}) completed`);
+  log(`[doc.extract] job ${jobId} (user ${userId}) completed`);
   return { ok: true };
 }
 
@@ -127,7 +132,7 @@ async function reportProgress(
   try {
     await job.updateProgress(progress); // writes to Redis
   } catch (err) {
-    console.warn(
+    warn(
       `[doc.extract] failed to report Redis progress for job ${jobId}: ${
         err instanceof Error ? err.message : String(err)
       }`,
@@ -142,6 +147,6 @@ async function setJobState(
 ): Promise<void> {
   const { error } = await supabase.from('jobs').update(patch).eq('id', jobId);
   if (error) {
-    console.warn(`[doc.extract] failed to update job ${jobId}: ${error.message}`);
+    warn(`[doc.extract] failed to update job ${jobId}: ${error.message}`);
   }
 }

@@ -219,11 +219,15 @@ re-enqueuing the same document is a no-op.
 
 ## Webhooks
 
-- `signPayload` — HMAC-SHA256 of the raw body using the endpoint's `secret_key`.
-- `dispatchWebhook` — POSTs the payload with the signature in the
-  `X-IngestIO-Signature` header (plus `X-IngestIO-Event`); non-2xx throws so the
-  delivery queue retries.
-- `verifyWebhookSignature` — constant-time check for the receiving side.
+- `signPayload` — HMAC-SHA256 of `` `${timestamp}.${body}` `` using the endpoint's
+  `secret_key`.
+- `dispatchWebhook` — POSTs the payload signed over `timestamp.body`, with the
+  signature in `X-IngestIO-Signature`, the dispatch time (epoch ms) in
+  `X-IngestIO-Timestamp`, and the event in `X-IngestIO-Event`; non-2xx throws so
+  the delivery queue retries.
+- `verifyWebhookSignature` (`lib/webhooks/verifier.ts`) — constant-time check for
+  the receiving side that also rejects timestamps outside a 5-minute freshness
+  window (replay protection).
 - `enqueueWebhookDeliveries` — loads the user's endpoints subscribed to an event
   and enqueues one `webhook.deliver` per target.
 
@@ -325,12 +329,15 @@ npm test                 # run all suites
 npm run test:watch       # watch mode
 ```
 
-Covered: HMAC signature generation (RFC 4231 + fixed known vectors), signature
-verification (tampered body, wrong secret, missing/different-length signatures),
-webhook header contracts (`X-IngestIO-Signature`, `X-IngestIO-Event`), webhook
-payload construction, and queue payload validation for both `ExtractJobData` and
-`WebhookDeliveryData`. A live BullMQ round-trip runs when `TEST_REDIS_URL` is set
-(e.g. a local Redis or a throwaway Upstash database):
+Covered: HMAC signature generation over `${timestamp}.${body}` (RFC 4231 key
+material + fixed known vectors), replay protection (stale, future, and
+malformed timestamps rejected; freshness window respected), signature
+verification (tampered body, wrong secret, missing/different-length
+signatures), webhook header contracts (`X-IngestIO-Signature`,
+`X-IngestIO-Timestamp`, `X-IngestIO-Event`), webhook payload construction, and
+queue payload validation for both `ExtractJobData` and `WebhookDeliveryData`. A
+live BullMQ round-trip runs when `TEST_REDIS_URL` is set (e.g. a local Redis or
+a throwaway Upstash database):
 
 ```bash
 TEST_REDIS_URL=rediss://default:...@... npm test
@@ -347,7 +354,15 @@ Typecheck the whole monorepo (root + all workspaces) with `npm run typecheck`.
   service-role key is used exclusively server-side and never shipped to the
   browser.
 - **Signed webhooks** — payloads are HMAC-SHA256 signed with per-endpoint
-  secrets; recipients verify with constant-time comparison.
+  secrets over `${timestamp}.${body}`; recipients verify with constant-time
+  comparison and reject timestamps older than 5 minutes (replay protection).
+- **Upload rate limiting** — a sliding-window limiter (5 req/min per user/IP)
+  backed by Upstash Redis returns `429` with `X-RateLimit-*` headers.
+- **Strict HTTP headers** — `X-Frame-Options: DENY`, `X-Content-Type-Options:
+  nosniff`, `Referrer-Policy`, HSTS, and `Permissions-Policy` are applied to
+  every route.
+- **Sanitized worker logs** — credentials, API keys, and bearer tokens are
+  masked before anything reaches stdout/log drains.
 - **Fail-fast payloads** — malformed queue payloads fail immediately
   (`UnrecoverableError`), skipping wasteful retries.
 - **Rate-limit hygiene** — 429s get their own long backoff schedule instead of
