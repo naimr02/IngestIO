@@ -1,15 +1,25 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { getBrowserSupabase } from '@ingestio/lib/supabase/client';
 import type { JobStatus, JobStatusResponse, UploadJobResponse } from '@ingestio/shared';
 
 const POLL_INTERVAL_MS = 2000;
 const TOKEN_STORAGE_KEY = 'ingestio.access-token';
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
+const NOTICE_DURATION_MS = 4500;
 
-// NEXT_PUBLIC_ vars are inlined at build time; when set, this lets a demo
-// session run on the Supabase anon key instead of a personal access token.
-const DEMO_TOKEN = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+// NEXT_PUBLIC_ vars are inlined at build time; when both are set, the demo
+// entry point signs in an anonymous Supabase session instead of requiring a
+// personal access token.
+const DEMO_AUTH_AVAILABLE = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+);
+
+interface Notice {
+  kind: 'success' | 'error';
+  text: string;
+}
 
 const TERMINAL_STATUSES: ReadonlySet<JobStatus> = new Set(['completed', 'failed']);
 
@@ -61,11 +71,57 @@ export default function Home() {
   const [job, setJob] = useState<JobStatusResponse | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isDemoSigningIn, setIsDemoSigningIn] = useState(false);
+  const [isDemoSession, setIsDemoSession] = useState(false);
+  const [notice, setNotice] = useState<Notice | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showNotice = useCallback((kind: Notice['kind'], text: string) => {
+    setNotice({ kind, text });
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setNotice(null), NOTICE_DURATION_MS);
+  }, []);
 
   useEffect(() => {
     window.localStorage.setItem(TOKEN_STORAGE_KEY, token);
   }, [token]);
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    };
+  }, []);
+
+  /**
+   * Demo path: create an anonymous Supabase session and use its access token
+   * as the Bearer token for uploads + status polls. Requires "Allow anonymous
+   * sign-ins" in the Supabase project's Auth settings.
+   */
+  const handleDemoSignIn = async () => {
+    const supabase = getBrowserSupabase();
+    if (!supabase) {
+      showNotice('error', 'Demo auth is not configured (NEXT_PUBLIC_SUPABASE_* missing).');
+      return;
+    }
+    setIsDemoSigningIn(true);
+    try {
+      const { data, error } = await supabase.auth.signInAnonymously();
+      if (error) throw error;
+      const accessToken = data.session?.access_token;
+      if (!accessToken) {
+        throw new Error('Anonymous sign-in returned no session.');
+      }
+      setToken(accessToken);
+      setIsDemoSession(true);
+      showNotice('success', 'Demo guest session active — you can now upload a PDF.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      showNotice('error', `Demo sign-in failed: ${message}`);
+    } finally {
+      setIsDemoSigningIn(false);
+    }
+  };
 
   // Poll the live job status every 2s until it reaches a terminal state.
   useEffect(() => {
@@ -193,28 +249,40 @@ export default function Home() {
       </header>
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <label htmlFor="token" className="mb-2 block text-sm font-medium text-slate-300">
-          Supabase access token
-        </label>
+        <div className="mb-2 flex items-center gap-2">
+          <label htmlFor="token" className="block text-sm font-medium text-slate-300">
+            Supabase access token
+          </label>
+          {isDemoSession && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-300 ring-1 ring-emerald-500/30">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              Demo guest session
+            </span>
+          )}
+        </div>
         <div className="flex gap-2">
           <input
             id="token"
             type="password"
             value={token}
-            onChange={(e) => setToken(e.target.value)}
+            onChange={(e) => {
+              setToken(e.target.value);
+              setIsDemoSession(false);
+            }}
             placeholder="Paste a Supabase JWT (Project Settings → API)"
             className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-cyan-500 focus:outline-none"
             autoComplete="off"
             spellCheck={false}
           />
-          {DEMO_TOKEN && (
+          {DEMO_AUTH_AVAILABLE && (
             <button
               type="button"
-              onClick={() => setToken(DEMO_TOKEN)}
-              className="shrink-0 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:border-cyan-500 hover:text-cyan-300"
-              title="Use the anon key from NEXT_PUBLIC_SUPABASE_ANON_KEY"
+              onClick={handleDemoSignIn}
+              disabled={isDemoSigningIn}
+              className="shrink-0 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:border-cyan-500 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+              title="Sign in as an anonymous guest via Supabase Auth"
             >
-              Use demo key
+              {isDemoSigningIn ? 'Signing in…' : 'Use demo key'}
             </button>
           )}
         </div>
@@ -288,6 +356,26 @@ export default function Home() {
           </>
         )}
       </section>
+
+      {notice && (
+        <div className="fixed inset-x-0 top-4 z-50 flex justify-center px-4">
+          <div
+            role="status"
+            className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-lg ring-1 ${
+              notice.kind === 'success'
+                ? 'bg-emerald-500/15 text-emerald-300 ring-emerald-500/30'
+                : 'bg-red-500/15 text-red-300 ring-red-500/30'
+            }`}
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${
+                notice.kind === 'success' ? 'bg-emerald-400' : 'bg-red-400'
+              }`}
+            />
+            {notice.text}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div
