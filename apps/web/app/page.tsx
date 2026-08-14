@@ -66,7 +66,8 @@ function isPdf(file: File): boolean {
   return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 }
 
-function truncateJobId(jobId: string): string {
+function truncateJobId(jobId: string | undefined): string {
+  if (!jobId) return 'N/A';
   return jobId.slice(0, 8) + '…';
 }
 
@@ -227,13 +228,13 @@ export default function Home() {
         if (data) {
           setRecentJobs(
             data.map((j: any) => ({
-              job_id: j.job_id,
-              status: j.status,
-              progress: j.progress,
-              result: j.result_json,
-              created_at: j.created_at,
-              updated_at: j.updated_at,
-              error: j.error,
+              job_id: j.id || j.job_id || '',
+              status: (j.status || 'pending') as JobStatus,
+              progress: j.progress ?? 0,
+              result: j.result_json ?? null,
+              created_at: j.created_at || new Date().toISOString(),
+              updated_at: j.updated_at || new Date().toISOString(),
+              error: j.error || null,
             })) as JobStatusResponse[],
           );
         }
@@ -343,17 +344,11 @@ export default function Home() {
             rel="noopener noreferrer"
             className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:border-cyan-500 hover:text-cyan-300"
           >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className="h-5 w-5"
-            >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
               <path
                 fillRule="evenodd"
-                d="M12 2C6.477 2 2 6.477 2 12.001c0 4.418 2.865 8.165 6.839 9.489.5.092.682-.217.682-.477 0-.234-.008-.874-.012-1.637-2.782.604-3.368-1.232-3.368-1.232-.45-1.131-1.093-1.416-1.093-1.416-1.155-.955.06-1.103.06-1.103 1.277.093 1.907 1.303 1.907 1.303 1.13 1.93 2.96 1.438 3.69.815.112-.638.353-1.438.645-1.775-2.24-.257-4.598-1.12-4.598-4.93 0-1.073.384-1.934 1-2.62-.1-.255-.433-1.274.094-2.653 0 0 .82-.263 2.685 1 .a9.9 0 012.41-.32c.815 0 1.646.228 2.402 1 1.86-1.262 2.678-1 2.678-1 .52 1.379.19 2.398.093 2.653.608.685.988 1.546.988 2.615 0 3.807-2.363 4.674-4.603 4.92.361.309.672.903.672 1.817 0 1.306-.012 2.364-.012 2.682 0 .22.164.493.7.393A10.018 10.018 0 0022 12c0-5.523-4.477-12-10-12z"
                 clipRule="evenodd"
+                d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.438.636-1.775-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.027A9.564 9.564 0 0112 6.845c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
               />
             </svg>
             GitHub
@@ -382,35 +377,37 @@ export default function Home() {
           <div className="grid grid-cols-3 gap-4 text-sm text-slate-400">
             <div>
               <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mb-2">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                  <path d="M12 12v6" />
-                  <path d="M12 12l-3 3" />
-                  <path d="M12 12l3 3" />
-                  <line x1="12" y1="2" x2="12" y2="8" />
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
                 </svg>
               </div>
               <strong>Step 1:</strong> Upload a PDF (Stored securely in Supabase Storage).
             </div>
             <div>
               <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mb-2">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="4" width="20" height="16" rx="2" />
-                  <path d="M12 12v.01M6 12v.01M18 12v.01" />
-                  <path d="M12 8v.01M6 8v.01M18 8v.01" />
-                  <path d="M4 12h2M18 12h2" />
-                  <path d="M12 16h2" />
-                  <path d="M12 8h2" />
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="4" y="4" width="16" height="16" rx="2" />
+                  <rect x="9" y="9" width="6" height="6" />
+                  <line x1="9" y1="1" x2="9" y2="4" />
+                  <line x1="15" y1="1" x2="15" y2="4" />
+                  <line x1="9" y1="20" x2="9" y2="23" />
+                  <line x1="15" y1="20" x2="15" y2="23" />
+                  <line x1="20" y1="9" x2="23" y2="9" />
+                  <line x1="20" y1="15" x2="23" y2="15" />
+                  <line x1="1" y1="9" x2="4" y2="9" />
+                  <line x1="1" y1="15" x2="4" y2="15" />
                 </svg>
               </div>
               <strong>Step 2:</strong> Asynchronous BullMQ worker extracts structured JSON using gemini-3.6-flash.
             </div>
             <div>
               <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mb-2">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                  <path d="M2 17l10 5 10-5" />
-                  <path d="M2 12l10 5 10-5" />
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                  <polyline points="2 17 12 22 22 17" />
+                  <polyline points="2 12 12 17 22 12" />
                 </svg>
               </div>
               <strong>Step 3:</strong> View live progress and receive real-time extracted JSON or HMAC-signed webhooks.
@@ -435,12 +432,12 @@ export default function Home() {
               </thead>
               <tbody>
                 {recentJobs.map((j) => (
-                  <tr key={j.job_id} className="border-b border-slate-700 hover:bg-slate-900">
+                  <tr key={j.job_id || 'N/A'} className="border-b border-slate-700 hover:bg-slate-900">
                     <td className="font-mono text-slate-300 truncate">
                       {truncateJobId(j.job_id)}
                     </td>
                     <td className="text-xs">
-                      {new Date(j.created_at).toLocaleString()}
+                      {j.created_at ? new Date(j.created_at).toLocaleString() : 'N/A'}
                     </td>
                     <td>
                       <span
@@ -454,7 +451,7 @@ export default function Home() {
                             : 'bg-red-500/10 text-red-300'
                         }`}
                       >
-                        {j.status}
+                        {j.status || 'pending'}
                       </span>
                     </td>
                     <td className="text-xs">
