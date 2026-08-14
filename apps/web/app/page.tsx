@@ -350,7 +350,11 @@ export default function Home() {
               fill="currentColor"
               className="h-5 w-5"
             >
-              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.236 1.839 1.236 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.959.267 1.125.443 1.125.703 0 1.026.389 1.235 1.129.76 1.245 1.814 1.814 2.245 3.07.997.107-.775.418-1.305.762-1.604 2.665-.305 5.467-1.334 5.467-5.931 0-1.311.469-2.381 1.236-3.221zM12 4.2C7.015 4.2 2 9.215 2 14.2 2 19.185 7.015 24 12 24s10-4.815 10-9.8c0-4.985-4.985-10-10-10z" />
+              <path
+                fillRule="evenodd"
+                d="M12 2C6.477 2 2 6.477 2 12.001c0 4.418 2.865 8.165 6.839 9.489.5.092.682-.217.682-.477 0-.234-.008-.874-.012-1.637-2.782.604-3.368-1.232-3.368-1.232-.45-1.131-1.093-1.416-1.093-1.416-1.155-.955.06-1.103.06-1.103 1.277.093 1.907 1.303 1.907 1.303 1.13 1.93 2.96 1.438 3.69.815.112-.638.353-1.438.645-1.775-2.24-.257-4.598-1.12-4.598-4.93 0-1.073.384-1.934 1-2.62-.1-.255-.433-1.274.094-2.653 0 0 .82-.263 2.685 1 .a9.9 0 012.41-.32c.815 0 1.646.228 2.402 1 1.86-1.262 2.678-1 2.678-1 .52 1.379.19 2.398.093 2.653.608.685.988 1.546.988 2.615 0 3.807-2.363 4.674-4.603 4.92.361.309.672.903.672 1.817 0 1.306-.012 2.364-.012 2.682 0 .22.164.493.7.393A10.018 10.018 0 0022 12c0-5.523-4.477-12-10-12z"
+                clipRule="evenodd"
+              />
             </svg>
             GitHub
             <span className="ml-1 text-xs font-medium bg-cyan-500/20 px-2 rounded">
@@ -377,25 +381,36 @@ export default function Home() {
           </summary>
           <div className="grid grid-cols-3 gap-4 text-sm text-slate-400">
             <div>
-              <div className="h-8 w-8 rounded-full bg-amber-500/10 flex items-center justify-center mb-2">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19 13v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3zM9 17H5c-1.1 0-2-.9-2-2v-1c0-1.1.89-2 2-2h2c.4 0.3 1.1.54 2 .68l2-1.23.05.22c.56-.18 1.13-.26 1.83-.26 1.1 0 2 .9 2 2v1c0 1.1.89 2 2 2h2c1.1 0 2 .9 2 2v1c0 1.1.9 2 2 2h1z" />
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mb-2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                  <path d="M12 12v6" />
+                  <path d="M12 12l-3 3" />
+                  <path d="M12 12l3 3" />
+                  <line x1="12" y1="2" x2="12" y2="8" />
                 </svg>
               </div>
               <strong>Step 1:</strong> Upload a PDF (Stored securely in Supabase Storage).
             </div>
             <div>
-              <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center mb-2">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 5v14M5 12h14" />
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mb-2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <path d="M12 12v.01M6 12v.01M18 12v.01" />
+                  <path d="M12 8v.01M6 8v.01M18 8v.01" />
+                  <path d="M4 12h2M18 12h2" />
+                  <path d="M12 16h2" />
+                  <path d="M12 8h2" />
                 </svg>
               </div>
               <strong>Step 2:</strong> Asynchronous BullMQ worker extracts structured JSON using gemini-3.6-flash.
             </div>
             <div>
-              <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center mb-2">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mb-2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                  <path d="M2 17l10 5 10-5" />
+                  <path d="M2 12l10 5 10-5" />
                 </svg>
               </div>
               <strong>Step 3:</strong> View live progress and receive real-time extracted JSON or HMAC-signed webhooks.
