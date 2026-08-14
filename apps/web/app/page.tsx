@@ -239,8 +239,13 @@ export default function Home() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-4 py-10">
       <header className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 text-lg font-bold text-white shadow-lg shadow-blue-900/40">
-          I
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800 border border-slate-700">
+          <img
+            src="/assets/ingestio-logo.png"
+            alt="IngestIO"
+            className="h-full w-full object-contain"
+            style={{ maxWidth: '100%' }}
+          />
         </div>
         <div>
           <h1 className="text-xl font-semibold tracking-tight">IngestIO</h1>
