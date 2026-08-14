@@ -1,4 +1,7 @@
-# IngestIO
+<div align="center">
+  <img src="assets/ingestio-logo.png" alt="IngestIO Logo" width="120" height="120" />
+  <h1>IngestIO</h1>
+</div>
 
 **Open-source background document operations platform.** Upload a PDF, get back a
 structured JSON extraction — without blocking the request. Multi-tenant uploads
