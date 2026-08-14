@@ -15,6 +15,13 @@ const NOTICE_DURATION_MS = 4500;
 
 const ACTIVE_JOB_STORAGE_KEY = 'active_job_id';
 
+// NEXT_PUBLIC_ vars are inlined at build time; when both are set, the demo
+// entry point signs in an anonymous Supabase session instead of requiring a
+// personal access token.
+const DEMO_AUTH_AVAILABLE = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+);
+
 interface Notice {
   kind: 'success' | 'error';
   text: string;
@@ -91,9 +98,38 @@ export default function Home() {
     noticeTimer.current = setTimeout(() => setNotice(null), NOTICE_DURATION_MS);
   }, []);
 
+  // Demo path: create an anonymous Supabase session and use its access token
+  // as the Bearer token for uploads + status polls. Requires "Allow anonymous
+  // sign-ins" in the Supabase project's Auth settings.
+  const handleDemoSignIn = useCallback(async () => {
+    const supabaseClient = getBrowserSupabase();
+    if (!supabaseClient) {
+      showNotice('error', 'Demo auth is not configured (NEXT_PUBLIC_SUPABASE_* missing).');
+      return;
+    }
+    setIsDemoSigningIn(true);
+    try {
+      const { data, error } = await supabaseClient.auth.signInAnonymously();
+      if (error) throw error;
+      const accessToken = data.session?.access_token;
+      if (!accessToken) {
+        throw new Error('Anonymous sign-in returned no session.');
+      }
+      setToken(accessToken);
+      setIsDemoSession(true);
+      showNotice('success', 'Demo guest session active — you can now upload a PDF.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      showNotice('error', `Demo sign-in failed: ${message}`);
+    } finally {
+      setIsDemoSigningIn(false);
+    }
+  }, [showNotice]);
+
   // === 2. Session Persistence & 1-Click Guest Auth ===
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (!supabase) return;
     // Check for existing session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -123,7 +159,7 @@ export default function Home() {
     if (job && TERMINAL_STATUSES.has(job.status)) {
       window.localStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
     }
-  }, [jobId, job.status]);
+  }, [jobId, job?.status]);
 
   // Poll the live job status every 2s until it reaches a terminal state.
   // On mount, if localStorage has an active_job_id and the job is pending/processing,
@@ -281,32 +317,6 @@ export default function Home() {
   const isPolling = job !== null && !TERMINAL_STATUSES.has(job.status);
   const canSubmit = file !== null && token.trim().length > 0 && !isUploading && !isPolling;
 
-  // Fetch recent jobs on mount when token becomes available
-  useEffect(() => {
-    if (!supabase || !token.trim()) return;
-    supabase
-      .from('jobs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(10)
-      .then(({ data, error }) => {
-        if (error) return;
-        if (data) {
-          setRecentJobs(
-            data.map((j: any) => ({
-              job_id: j.job_id,
-              status: j.status,
-              progress: j.progress,
-              result: j.result_json,
-              created_at: j.created_at,
-              updated_at: j.updated_at,
-              error: j.error,
-            })) as JobStatusResponse[],
-          );
-        }
-      });
-  }, [supabase, token]);
-
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-4 py-10">
       {/* === 1. Header, Explanation & Project Links === */}
@@ -391,7 +401,7 @@ export default function Home() {
               <strong>Step 3:</strong> View live progress and receive real-time extracted JSON or HMAC-signed webhooks.
             </div>
           </div>
-        </div>
+        </details>
       </div>
 
       {/* === 4. Recent Jobs History Dashboard === */}
@@ -504,11 +514,11 @@ export default function Home() {
       </section>
 
       <section
-        className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-10 text-center transition-colors ${
+        className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-10 text-center transition-colors ${
           isDragging
             ? 'border-cyan-400 bg-cyan-500/10'
             : 'border-slate-700 bg-slate-900/60 hover:border-slate-500'
-        }`
+        }`}
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => {
           e.preventDefault();
