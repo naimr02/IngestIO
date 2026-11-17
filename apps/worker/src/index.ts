@@ -80,7 +80,7 @@ async function handleFailed(job: FailedJobLike | undefined, error: Error): Promi
   const isFinalAttempt =
     error.name === 'UnrecoverableError' || job.attemptsMade >= maxAttempts;
 
-  if (job.name === JOB_NAMES.extract) {
+  if (job.name === JOB_NAMES.extract && isFinalAttempt) {
     // Extraction failure → the job itself failed. Webhook delivery failures
     // must NOT flip an already-completed job back to `failed`.
     await supabase
