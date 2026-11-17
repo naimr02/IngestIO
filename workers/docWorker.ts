@@ -74,7 +74,7 @@ export async function processDocJob(
 
   await supabase
     .from('jobs')
-    .update({ status: 'completed', progress: 100, result_json: result })
+    .update({ status: 'completed', progress: 100, result_json: result, error: null })
     .eq('id', jobId);
   await reportProgress(job, supabase, jobId, 100);
 
