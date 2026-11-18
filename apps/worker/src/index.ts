@@ -25,7 +25,7 @@ import {
 } from '@ingestio/lib/queue/docQueue';
 import { getSupabaseAdmin } from '@ingestio/lib/supabase/admin';
 import { sanitizeMessage } from '@ingestio/lib/sanitize';
-import { dispatchWebhook } from '@ingestio/lib/webhooks/dispatcher';
+import { dispatchWebhook, enqueueWebhookDeliveries } from '@ingestio/lib/webhooks/dispatcher';
 import { createDocWorker } from '@ingestio/workers/docWorker';
 import { PayloadValidationError, UnrecoverableJobError } from '@ingestio/shared';
 import type { DeadLetterEntry, ExtractJobData, WebhookDeliveryData } from '@ingestio/shared';
@@ -105,6 +105,18 @@ async function handleFailed(job: FailedJobLike | undefined, error: Error): Promi
     failedAt: new Date().toISOString(),
   };
   await getDeadLetterQueue().add('dlq', entry);
+
+  // Fire job.failed webhooks for extraction jobs that exhausted retries
+  if (job.name === JOB_NAMES.extract) {
+    const { data: jobRow } = await supabase.from('jobs').select('*').eq('id', job.data.jobId).single();
+    if (jobRow) {
+      const enqueued = await enqueueWebhookDeliveries(supabase, jobRow, 'job.failed');
+      if (enqueued > 0) {
+        log(`[doc.extract] enqueued ${enqueued} job.failed webhook(s) for job ${job.data.jobId}`);
+      }
+    }
+  }
+
   logError(`[${job.name}] exhausted ${maxAttempts} attempts → moved to DLQ: ${error.message}`);
 }
 
