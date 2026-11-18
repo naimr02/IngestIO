@@ -8,10 +8,10 @@
 
 /**
  * Model used for structured extraction. Override with `GEMINI_MODEL`; defaults
- * to `gemini-3.6-flash`. A leading `models/` prefix is tolerated (env values
- * like `models/gemini-3.6-flash` are normalized before the REST call).
+ * to `gemini-3.8-flash`. A leading `models/` prefix is tolerated (env values
+ * like `models/gemini-3.8-flash` are normalized before the REST call).
  */
-export const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+export const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 
 /** Model name with any `models/` prefix stripped — the REST path wants the bare name. */
 const GEMINI_MODEL_NAME = GEMINI_MODEL.replace(/^models\//, '');
@@ -65,7 +65,7 @@ and monetary values as-is. If the document has no extractable content, return an
 object with an empty body instead of failing.`;
 
 /**
- * Send the PDF to Gemini (model from `GEMINI_MODEL`, default `gemini-3.6-flash`)
+ * Send the PDF to Gemini (model from `GEMINI_MODEL`, default `gemini-3.8-flash`)
  * and return the parsed structured JSON object. Throws `GeminiRateLimitError`
  * on HTTP 429 and `GeminiApiError` for other API failures, so the worker's
  * retry/backoff policy can react.
