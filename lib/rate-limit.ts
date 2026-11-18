@@ -19,6 +19,8 @@ export const UPLOAD_RATE_WINDOW_SECONDS = 60;
 
 // In-memory sliding window fallback
 const memoryStore = new Map<string, number[]>();
+let memoryCleanupCounter = 0;
+const MEMORY_CLEANUP_INTERVAL = 100; // run cleanup every N calls
 
 function memoryLimit(key: string): { success: boolean; limit: number; remaining: number; reset: number } {
   const now = Date.now();
@@ -30,6 +32,12 @@ function memoryLimit(key: string): { success: boolean; limit: number; remaining:
   const valid = timestamps.filter(ts => ts > windowStart);
   valid.push(now);
   memoryStore.set(key, valid);
+
+  // Periodic cleanup of stale keys (shortcut: probabilistic, not guaranteed; acceptable for dev/single-instance)
+  if (++memoryCleanupCounter >= MEMORY_CLEANUP_INTERVAL) {
+    memoryCleanupCounter = 0;
+    for (const [k, v] of memoryStore) if (v.every(ts => ts <= windowStart)) memoryStore.delete(k);
+  }
 
   const limit = UPLOAD_RATE_LIMIT;
   const remaining = Math.max(0, limit - valid.length);
@@ -74,6 +82,8 @@ export function getRateLimitIdentifier(request: Request, userId?: string): strin
  * rate-limit headers) when the client is over the limit, or `null` to allow
  * the request through.
  */
+export { memoryStore }; // for tests
+
 export async function enforceUploadRateLimit(
   request: Request,
   userId?: string,
