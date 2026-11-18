@@ -41,7 +41,7 @@ function memoryLimit(key: string): { success: boolean; limit: number; remaining:
 
   const limit = UPLOAD_RATE_LIMIT;
   const remaining = Math.max(0, limit - valid.length);
-  const reset = Math.ceil((valid[0] + windowMs) / 1000); // epoch seconds
+  const reset = Math.ceil((valid[0]! + windowMs) / 1000); // epoch seconds
 
   return { success: valid.length <= limit, limit, remaining, reset };
 }
