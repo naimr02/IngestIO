@@ -15,8 +15,9 @@ import { Worker, type Job } from 'bullmq';
 import { QUEUES, backoffStrategy, createRedisConnection } from '@ingestio/lib/queue/docQueue';
 import { getSupabaseAdmin } from '@ingestio/lib/supabase/admin';
 import { sanitizeMessage } from '@ingestio/lib/sanitize';
-import { extractStructuredJsonFromPdf } from '@ingestio/lib/gemini/client';
 import { enqueueWebhookDeliveries } from '@ingestio/lib/webhooks/dispatcher';
+import { GeminiExtractionProvider } from '@ingestio/lib/extraction/gemini-provider';
+import type { ExtractionProvider } from '@ingestio/lib/extraction/provider';
 import { UnrecoverableJobError, validateExtractJobData } from '@ingestio/shared';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ExtractJobData } from '@ingestio/shared';
@@ -30,6 +31,7 @@ const warn = (msg: unknown) => console.warn(sanitizeMessage(msg));
 
 export interface DocWorkerOptions {
   concurrency?: number;
+  extractionProvider?: ExtractionProvider;
 }
 
 /** Instantiate the extraction worker. Pass a client for testability. */
@@ -38,10 +40,11 @@ export function createDocWorker(
   options: DocWorkerOptions = {},
 ): Worker<ExtractJobData> {
   const client = supabase ?? getSupabaseAdmin();
+  const provider = options.extractionProvider ?? new GeminiExtractionProvider();
 
   return new Worker<ExtractJobData>(
     QUEUES.docs,
-    (job) => processDocJob(job, client),
+    (job) => processDocJob(job, client, provider),
     {
       connection: createRedisConnection(),
       concurrency: options.concurrency ?? Number(process.env.WORKER_CONCURRENCY ?? 4),
@@ -54,6 +57,7 @@ export function createDocWorker(
 export async function processDocJob(
   job: Job<ExtractJobData>,
   supabase: SupabaseClient,
+  provider: ExtractionProvider,
 ): Promise<{ ok: true }> {
   // A corrupt payload will never succeed — fail immediately, skip retries.
   let data: ExtractJobData;
@@ -69,7 +73,7 @@ export async function processDocJob(
   const pdf = await downloadPdf(supabase, bucket, storagePath);
   await reportProgress(job, supabase, jobId, 25);
 
-  const result = await extractStructuredJsonFromPdf({ pdf, mimeType, fileName });
+  const result = await provider.extract({ pdf, mimeType, fileName });
   await reportProgress(job, supabase, jobId, 50);
 
   await supabase
